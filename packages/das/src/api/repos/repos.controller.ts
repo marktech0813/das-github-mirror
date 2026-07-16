@@ -1,4 +1,5 @@
 import { Controller, Get, Param } from "@nestjs/common";
+import { NoCache } from "../../cache";
 import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { ReposService } from "./repos.service";
 
@@ -26,6 +27,7 @@ export class ReposController {
   }
 
   @Get(":owner/:repo/installation")
+  @NoCache()
   @ApiOperation({
     summary: "GitHub App installation status for a repo",
     description:
