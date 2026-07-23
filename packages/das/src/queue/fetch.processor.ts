@@ -136,7 +136,13 @@ export class FetchProcessor extends WorkerHost {
       issueNumber,
     );
 
-    await this.issueRepo.update({ repoFullName, issueNumber }, { solvedByPr });
+    // Re-check state at write time. A reopen can land during the GraphQL fetch
+    // after the early CLOSED check above; writing solved_by_pr onto an OPEN
+    // issue would corrupt issue-discovery scoring (#199).
+    await this.issueRepo.update(
+      { repoFullName, issueNumber, state: "CLOSED" },
+      { solvedByPr },
+    );
   }
 
   private async handlePrMetadata(
