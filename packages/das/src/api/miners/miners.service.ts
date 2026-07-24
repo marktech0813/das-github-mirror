@@ -9,6 +9,11 @@ const DEFAULT_SINCE_DAYS = 35;
 // the scalar-`since` GET path and the per-repo `since` POST path so the two
 // stay identical.
 const PR_SELECT_COLUMNS = `
+        CASE
+          WHEN p.state = 'MERGED' THEN p.merged_at
+          WHEN p.state = 'CLOSED' THEN COALESCE(p.closed_at, p.created_at)
+          ELSE p.created_at
+        END                             AS activity_at,
         LOWER(p.repo_full_name)         AS repo_full_name,
         p.pr_number,
         COALESCE(p.title, '')           AS title,
@@ -185,7 +190,7 @@ export class MinersService {
   }> {
     const cursor = pagination?.cursor ?? null;
     const keysetClause = cursor
-      ? `AND (p.created_at, LOWER(p.repo_full_name), p.pr_number) < ($3::timestamptz, $4, $5::int)`
+      ? `AND (activity_at, LOWER(p.repo_full_name), p.pr_number) < ($3::timestamptz, $4, $5::int)`
       : "";
     const limitClause = pagination ? `LIMIT $${cursor ? 6 : 3}` : "";
     const params: unknown[] = !pagination
@@ -220,7 +225,7 @@ export class MinersService {
           OR (p.state = 'CLOSED' AND p.created_at >= $2)
         )
         ${keysetClause}
-      ORDER BY p.created_at DESC, LOWER(p.repo_full_name) DESC, p.pr_number DESC
+      ORDER BY activity_at DESC, LOWER(p.repo_full_name) DESC, p.pr_number DESC
       ${limitClause}
       `,
       params,
@@ -239,7 +244,7 @@ export class MinersService {
       rows as Record<string, unknown>[],
       pagination.limit,
       (row) => ({
-        created_at: row.created_at as string,
+        created_at: row.activity_at as string,
         repo_full_name: row.repo_full_name as string,
         pr_number: row.pr_number as number,
       }),
@@ -274,7 +279,7 @@ export class MinersService {
   }> {
     const cursor = pagination?.cursor ?? null;
     const keysetClause = cursor
-      ? `AND (p.created_at, LOWER(p.repo_full_name), p.pr_number) < ($4::timestamptz, $5, $6::int)`
+      ? `AND (activity_at, LOWER(p.repo_full_name), p.pr_number) < ($4::timestamptz, $5, $6::int)`
       : "";
     const limitClause = pagination ? `LIMIT $${cursor ? 7 : 4}` : "";
     const params: unknown[] = !pagination
@@ -315,7 +320,7 @@ export class MinersService {
           OR (p.state = 'CLOSED' AND p.created_at >= w.since)
         )
         ${keysetClause}
-      ORDER BY p.created_at DESC, LOWER(p.repo_full_name) DESC, p.pr_number DESC
+      ORDER BY activity_at DESC, LOWER(p.repo_full_name) DESC, p.pr_number DESC
       ${limitClause}
       `,
       params,
@@ -334,7 +339,7 @@ export class MinersService {
       rows as Record<string, unknown>[],
       pagination.limit,
       (row) => ({
-        created_at: row.created_at as string,
+        created_at: row.activity_at as string,
         repo_full_name: row.repo_full_name as string,
         pr_number: row.pr_number as number,
       }),
